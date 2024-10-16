@@ -8,13 +8,18 @@ import { LoginDto } from './dto/login-auth.dto';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @MessagePattern('register')
+  @MessagePattern('auth.register.user')
   register(@Payload() createAuthDto: CreateAuthDto) {
     return this.authService.create(createAuthDto);
   }
 
-  @MessagePattern('login')
+  @MessagePattern('auth.login.user')
   login(@Payload() loginDto: LoginDto) {
     return this.authService.login(loginDto);
+  }
+
+  @MessagePattern('auth.verify.user')
+  verifyToken(@Payload() token: string) {
+    return this.authService.verifyToken(token);
   }
 }

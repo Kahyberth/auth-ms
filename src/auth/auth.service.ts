@@ -96,4 +96,23 @@ export class AuthService {
     const token = this.jwtService.sign(payload);
     return token;
   }
+
+  async verifyToken(token: string) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { sub, iat, exp, ...user } = this.jwtService.verify(token, {
+        secret: envs.JWT_SECRET,
+      });
+
+      return {
+        user,
+        token: await this.signJWT(user),
+      };
+    } catch (error) {
+      throw new RpcException({
+        message: error,
+        status: 401,
+      });
+    }
+  }
 }
