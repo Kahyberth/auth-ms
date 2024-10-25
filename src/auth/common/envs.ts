@@ -8,6 +8,9 @@ interface EnvVars {
   TURSO_AUTH_TOKEN: string;
   JWT_SECRET: string;
   SALT: string;
+  MAIL_USERNAME: string;
+  MAIL_PASSWORD: string;
+  MAIL_HOST: string;
 }
 
 const envsSchema = joi
@@ -17,6 +20,9 @@ const envsSchema = joi
     TURSO_AUTH_TOKEN: joi.string().required(),
     JWT_SECRET: joi.string().required(),
     SALT: joi.string().required(),
+    MAIL_USERNAME: joi.string().required(),
+    MAIL_PASSWORD: joi.string().required(),
+    MAIL_HOST: joi.string().required(),
   })
   .unknown(true);
 
@@ -26,6 +32,9 @@ const { error, value } = envsSchema.validate({
   TURSO_AUTH_TOKEN: process.env.TURSO_AUTH_TOKEN,
   JWT_SECRET: process.env.JWT_SECRET,
   SALT: process.env.SALT,
+  MAIL_USERNAME: process.env.MAIL_USERNAME,
+  MAIL_PASSWORD: process.env.MAIL_PASSWORD,
+  MAIL_HOST: process.env.MAIL_HOST,
 });
 
 if (error) {
@@ -40,4 +49,7 @@ export const envs = {
   TURSO_AUTH_TOKEN: envVars.TURSO_AUTH_TOKEN,
   JWT_SECRET: envVars.JWT_SECRET,
   SALT: envVars.SALT,
+  MAIL_USERNAME: envVars.MAIL_USERNAME,
+  MAIL_PASSWORD: envVars.MAIL_PASSWORD,
+  MAIL_HOST: envVars.MAIL_HOST,
 };

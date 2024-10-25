@@ -11,11 +11,13 @@ import { LoginDto } from './dto/login-auth.dto';
 import { eq } from 'drizzle-orm';
 import { RpcException } from '@nestjs/microservices';
 import { envs } from './common/envs';
+import { Mail } from 'src/mail/mail';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
+    private readonly mailService: Mail,
     @Inject('DB_CONNECTION') private readonly dbService: typeof db,
   ) {}
 
@@ -23,6 +25,7 @@ export class AuthService {
     const { name, email, password } = createAuthDto;
 
     const isUser = await this.findOneBy(email);
+
     if (isUser.length > 0) {
       throw new RpcException({
         status: HttpStatus.BAD_REQUEST,
@@ -38,6 +41,8 @@ export class AuthService {
         email,
         name,
       });
+
+      await this.mailService.sendOtpEmail(email, '123456');
 
       return {
         msg: 'User created successfully',
