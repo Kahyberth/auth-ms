@@ -16,7 +16,7 @@ async function bootstrap() {
     },
   );
   await app.listen().then(() => {
-    logger.log(`Orders microservice is listening on ${envs.PORT}`);
+    logger.log(`Auth-ms is listening on ${envs.PORT}`);
   });
 }
 bootstrap();

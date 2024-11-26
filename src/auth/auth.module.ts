@@ -4,11 +4,13 @@ import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { envs } from './common/envs';
 import { db } from '../index';
+import { Mail } from 'src/mail/mail';
 
 @Module({
   controllers: [AuthController],
   providers: [
     AuthService,
+    Mail,
     {
       provide: 'DB_CONNECTION',
       useValue: db,
@@ -18,7 +20,7 @@ import { db } from '../index';
     JwtModule.register({
       global: true,
       secret: envs.JWT_SECRET,
-      signOptions: { expiresIn: '3m' },
+      signOptions: { expiresIn: '10m' },
     }),
   ],
 })
