@@ -20,7 +20,7 @@ import { Mail } from 'src/mail/mail';
     JwtModule.register({
       global: true,
       secret: envs.JWT_SECRET,
-      signOptions: { expiresIn: '10m' },
+      signOptions: { expiresIn: '1h' },
     }),
   ],
 })

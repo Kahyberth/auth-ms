@@ -97,6 +97,22 @@ export class AuthService {
     }
   }
 
+  async findOneByToken(token: string) {
+    const email = (await this.verifyToken(token)).user.email;
+    try {
+      const user = await (await this.dbService)
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.email, email));
+      return { user, token };
+    } catch (error) {
+      throw new RpcException({
+        message: error,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+      });
+    }
+  }
+
   async signJWT(payload: JwtPayload) {
     const token = this.jwtService.sign(payload);
     return token;
