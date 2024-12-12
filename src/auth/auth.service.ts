@@ -29,14 +29,15 @@ export class AuthService {
     if (isUser.length > 0) {
       throw new RpcException({
         status: HttpStatus.BAD_REQUEST,
-        message: `User whit emai: ${email} already created`,
+        message: `User whit email: ${email} already created`,
       });
     }
 
     try {
       const salt = bcrypt.genSaltSync(+envs.SALT);
+      const user_id = uuidv4();
       await (await this.dbService).insert(usersTable).values({
-        id: uuidv4(),
+        id: user_id,
         password: bcrypt.hashSync(password, salt),
         email,
         name,
@@ -46,7 +47,7 @@ export class AuthService {
 
       return {
         msg: 'User created successfully',
-        token: await this.signJWT({ email }),
+        token: await this.signJWT({ email, user_id }),
       };
     } catch (error) {
       throw new RpcException({
@@ -78,7 +79,7 @@ export class AuthService {
     return {
       msg: 'Successful login',
       status: HttpStatus.OK,
-      token: await this.signJWT({ email }),
+      token: await this.signJWT({ email, user_id: user[0].id }),
     };
   }
 
