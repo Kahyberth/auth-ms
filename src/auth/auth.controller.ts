@@ -27,4 +27,9 @@ export class AuthController {
   getUser(@Payload() token: string) {
     return this.authService.findOneByToken(token);
   }
+
+  @MessagePattern('auth.find.user')
+  findUser(@Payload() email: string) {
+    return this.authService.findOneBy(email);
+  }
 }
