@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "5da478ff-5c96-496a-8a6c-bad2123811dc",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "95a98d73-fd0b-4c1d-80d5-39bd0bac92f1",
+  "prevId": "57a63fac-a733-4b6b-92d1-2c2bd877cd01",
   "tables": {
     "profile": {
       "name": "profile",
@@ -18,7 +18,7 @@
           "name": "user_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "profile_picture": {
@@ -201,28 +201,29 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "''"
+          "autoincrement": false
         },
         "created_at": {
           "name": "created_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": false,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "'\"2025-01-20T21:03:30.973Z\"'"
         },
         "updated_at": {
           "name": "updated_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": false,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "'\"2025-01-20T21:03:30.973Z\"'"
         },
         "leader_id": {
           "name": "leader_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         }
       },
@@ -318,6 +319,13 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": false,
+          "autoincrement": false
+        },
+        "company": {
+          "name": "company",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
           "autoincrement": false
         },
         "is_active": {

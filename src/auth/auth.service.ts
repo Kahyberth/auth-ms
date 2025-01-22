@@ -6,7 +6,7 @@ import { db } from '../index';
 
 import { JwtPayload } from './common/enums/jwt.enum';
 import { CreateAuthDto } from './dto/create-auth.dto';
-import { usersTable } from 'src/db/schema';
+import { profile, usersTable } from 'src/db/schema';
 import { LoginDto } from './dto/login-auth.dto';
 import { eq } from 'drizzle-orm';
 import { RpcException } from '@nestjs/microservices';
@@ -22,24 +22,37 @@ export class AuthService {
   ) {}
 
   async create(createAuthDto: CreateAuthDto) {
-    const { name, email, password } = createAuthDto;
+    const { name, email, password, lastName, company } = createAuthDto;
 
     const isUser = await this.findOneBy(email);
 
     if (isUser.length > 0) {
       throw new RpcException({
         status: HttpStatus.BAD_REQUEST,
-        message: `User whit emai: ${email} already created`,
+        message: `User whit email: ${email} already created`,
       });
     }
+
+    const userId = uuidv4();
 
     try {
       const salt = bcrypt.genSaltSync(+envs.SALT);
       await (await this.dbService).insert(usersTable).values({
-        id: uuidv4(),
-        password: bcrypt.hashSync(password, salt),
         email,
+        id: userId,
+        isActive: false,
+        isAvailable: true,
+        lastName,
+        company,
         name,
+        password: bcrypt.hashSync(password, salt),
+      });
+
+      await (await this.dbService).insert(profile).values({
+        id: uuidv4(),
+        isBlocked: false,
+        isVerified: false,
+        userId,
       });
 
       await this.mailService.sendOtpEmail(email, '123456');
@@ -76,7 +89,12 @@ export class AuthService {
     }
 
     return {
-      msg: 'Successful login',
+      data: {
+        email: user[0].email,
+        name: user[0].name,
+        lastName: user[0].lastName,
+        company: user[0].company,
+      },
       status: HttpStatus.OK,
       token: await this.signJWT({ email }),
     };
@@ -125,8 +143,16 @@ export class AuthService {
         secret: envs.JWT_SECRET,
       });
 
+      const data = await this.findOneBy(user.email);
+
       return {
-        user,
+        user: {
+          id: data[0].id,
+          email: data[0].email,
+          name: data[0].name,
+          lastName: data[0].lastName,
+          company: data[0].company,
+        },
         token: await this.signJWT(user),
       };
     } catch (error) {
