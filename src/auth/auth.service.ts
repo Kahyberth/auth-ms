@@ -115,6 +115,21 @@ export class AuthService {
     }
   }
 
+  async findOneById(id: string) {
+    try {
+      const user = await (await this.dbService)
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.id, id));
+      return user;
+    } catch (error) {
+      throw new RpcException({
+        message: error,
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+      });
+    }
+  }
+
   async findOneByToken(token: string) {
     const email = (await this.verifyToken(token)).user.email;
     try {

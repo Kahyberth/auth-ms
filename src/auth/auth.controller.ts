@@ -32,4 +32,9 @@ export class AuthController {
   findUser(@Payload() email: string) {
     return this.authService.findOneBy(email);
   }
+
+  @MessagePattern('auth.find.user.by.id')
+  findUserById(@Payload() id: string) {
+    return this.authService.findOneById(id);
+  }
 }
