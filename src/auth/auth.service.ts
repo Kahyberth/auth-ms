@@ -90,6 +90,7 @@ export class AuthService {
 
     return {
       data: {
+        id: user[0].id,
         email: user[0].email,
         name: user[0].name,
         lastName: user[0].lastName,
