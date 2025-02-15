@@ -1,148 +1,237 @@
-import { HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcrypt';
-import { db } from '../index';
-
-import { JwtPayload } from './common/enums/jwt.enum';
+import * as md5 from 'md5';
 import { CreateAuthDto } from './dto/create-auth.dto';
-import { profile, usersTable } from 'src/db/schema';
-import { LoginDto } from './dto/login-auth.dto';
-import { eq } from 'drizzle-orm';
 import { RpcException } from '@nestjs/microservices';
-import { envs } from './common/envs';
 import { Mail } from 'src/mail/mail';
+import { InjectRepository } from '@nestjs/typeorm';
+import { User } from './entities/users.entity';
+import { Repository } from 'typeorm';
+import { AvailabilityStatus, Profile } from './entities/profile.entity';
+import { Role, RoleEnum } from './entities/role.entity';
+import { UsersRole } from './entities/users_roles.entity';
+import { JwtPayload } from './common/enums/jwt.enum';
+import { LoginDto } from './dto/login-auth.dto';
+import { envs } from './common/envs';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(Profile)
+    private readonly profileRepository: Repository<Profile>,
+    @InjectRepository(Role)
+    private readonly roleRepository: Repository<Role>,
+    @InjectRepository(UsersRole)
+    private readonly userRoleRepository: Repository<UsersRole>,
     private readonly jwtService: JwtService,
     private readonly mailService: Mail,
-    @Inject('DB_CONNECTION') private readonly dbService: typeof db,
   ) {}
 
-  async create(createAuthDto: CreateAuthDto) {
-    const { name, email, password, lastName, company } = createAuthDto;
-
-    const isUser = await this.findOneBy(email);
-
-    if (isUser.length > 0) {
-      throw new RpcException({
-        status: HttpStatus.BAD_REQUEST,
-        message: `User whit email: ${email} already created`,
-      });
-    }
-
-    const userId = uuidv4();
-
+  async createUser(data: CreateAuthDto) {
     try {
-      const salt = bcrypt.genSaltSync(+envs.SALT);
-      await (await this.dbService).insert(usersTable).values({
-        email,
-        id: userId,
-        isActive: false,
-        isAvailable: true,
-        lastName,
-        company,
+      const { password, company, email, lastName, name, phone } = data;
+
+      this.logger.debug('Datos recibidos para registro', data);
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      const user = this.userRepository.create({
         name,
-        password: bcrypt.hashSync(password, salt),
+        lastName,
+        phone: phone || '',
+        password: hashedPassword,
+        email,
+        createdAt: new Date(),
+        language: 'es',
+        isActive: true,
+        isAvailable: true,
+        updatedAt: new Date(),
+        company,
       });
 
-      await (await this.dbService).insert(profile).values({
-        id: uuidv4(),
+      await this.userRepository.save(user);
+
+      const profile = this.profileRepository.create({
+        bio: '',
+        userId: user.id,
+        profile_picture: `https://www.gravatar.com/avatar/${md5(
+          user.email.trim().toLowerCase(),
+        )}?s=200&d=identicon`,
+        profile_banner: '',
+        updatedAt: new Date(),
+        education: '',
+        experience: '',
         isBlocked: false,
+        availabilityStatus: AvailabilityStatus.Online,
         isVerified: false,
-        userId,
+        skills: '',
+        location: '',
+        social_links: '',
+        timezone: null,
       });
 
-      await this.mailService.sendOtpEmail(email, '123456');
+      await this.profileRepository.save(profile);
+
+      const defaultRole = await this.roleRepository.findOne({
+        where: { role: RoleEnum.User },
+      });
+      if (defaultRole) {
+        const userRole = this.userRoleRepository.create({
+          roleId: defaultRole.id,
+          userId: user.id,
+          joinedAt: new Date(),
+        });
+        await this.userRoleRepository.save(userRole);
+      }
+
+      delete user.password;
 
       return {
-        msg: 'User created successfully',
-        token: await this.signJWT({ email }),
+        user: {
+          company: user.company,
+          email: user.email,
+          lastName: user.lastName,
+          name: user.name,
+          id: user.id,
+          isActive: user.isActive,
+          image: profile.profile_picture,
+        },
+        token: await this.signJWT({ email: user.email }),
       };
     } catch (error) {
+      this.logger.error('Error en createUser', error.stack);
+
+      if (error.code && error.code === 'SQLITE_CONSTRAINT') {
+        if (
+          error.message.includes('UNIQUE constraint failed: users_table.email')
+        ) {
+          throw new RpcException({
+            message: 'El correo ya está en uso.',
+            code: HttpStatus.CONFLICT,
+          });
+        }
+      }
+
       throw new RpcException({
-        message: error,
-        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message:
+          'Error interno del servidor. Por favor, intente de nuevo más tarde.',
+        code: HttpStatus.INTERNAL_SERVER_ERROR,
       });
     }
   }
 
-  async login(loginDto: LoginDto) {
-    const { email, password } = loginDto;
-    const user = await this.findOneBy(email);
-
-    if (user.length === 0)
-      throw new RpcException({
-        message: `User not found`,
-        status: HttpStatus.NOT_FOUND,
-      });
-
-    const isHashedPassword = bcrypt.compareSync(password, user[0].password);
-
-    if (!isHashedPassword) {
-      throw new RpcException({
-        message: `Incorrect password`,
-        status: HttpStatus.BAD_REQUEST,
-      });
-    }
-
-    return {
-      data: {
-        id: user[0].id,
-        email: user[0].email,
-        name: user[0].name,
-        lastName: user[0].lastName,
-        company: user[0].company,
-      },
-      status: HttpStatus.OK,
-      token: await this.signJWT({ email }),
-    };
-  }
-
-  async findOneBy(email: string) {
+  async profile(id: string) {
     try {
-      const user = await (await this.dbService)
-        .select()
-        .from(usersTable)
-        .where(eq(usersTable.email, email));
+      const user = await this.userRepository.findOne({
+        where: { id },
+        relations: ['profile'],
+      });
+
+      if (!user) {
+        throw new RpcException({
+          message: 'Usuario no encontrado.',
+          code: HttpStatus.NOT_FOUND,
+        });
+      }
+
       return user;
     } catch (error) {
+      this.logger.error('Error en profile', error.stack);
+
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
       throw new RpcException({
-        message: error,
-        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Error interno del servidor. Por favor, intente más tarde.',
+        code: HttpStatus.INTERNAL_SERVER_ERROR,
       });
     }
   }
 
-  async findOneById(id: string) {
+  async login(data: LoginDto) {
     try {
-      const user = await (await this.dbService)
-        .select()
-        .from(usersTable)
-        .where(eq(usersTable.id, id));
+      const { email, password } = data;
+
+      this.logger.debug('Datos recibidos para login', data);
+
+      const user = await this.userRepository.findOne({ where: { email } });
+
+      if (!user) {
+        throw new RpcException({
+          message: 'Correo o contraseña incorrectos.',
+          code: HttpStatus.UNAUTHORIZED,
+        });
+      }
+
+      const isPasswordCorrect = await bcrypt.compare(password, user.password);
+
+      if (!isPasswordCorrect) {
+        throw new RpcException({
+          message: 'Correo o contraseña incorrectos.',
+          code: HttpStatus.UNAUTHORIZED,
+        });
+      }
+
+      delete user.password;
+
+      return {
+        data: {
+          company: user.company,
+          email: user.email,
+          lastName: user.lastName,
+          name: user.name,
+          id: user.id,
+          isActive: user.isActive,
+        },
+        status: HttpStatus.OK,
+        token: await this.signJWT({ email: user.email }),
+      };
+    } catch (error) {
+      this.logger.error('Error en login', error.stack);
+
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
+      throw new RpcException({
+        message: 'Error interno del servidor. Por favor, intente más tarde.',
+        code: HttpStatus.INTERNAL_SERVER_ERROR,
+      });
+    }
+  }
+
+  async findOne(email: string) {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { email },
+        relations: ['profile'],
+      });
+
+      if (!user) {
+        throw new RpcException({
+          message: 'Usuario no encontrado.',
+          code: HttpStatus.NOT_FOUND,
+        });
+      }
+
       return user;
     } catch (error) {
-      throw new RpcException({
-        message: error,
-        status: HttpStatus.INTERNAL_SERVER_ERROR,
-      });
-    }
-  }
+      this.logger.error('Error en findOneBy', error.stack);
 
-  async findOneByToken(token: string) {
-    const email = (await this.verifyToken(token)).user.email;
-    try {
-      const user = await (await this.dbService)
-        .select()
-        .from(usersTable)
-        .where(eq(usersTable.email, email));
-      return { user, token };
-    } catch (error) {
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
       throw new RpcException({
-        message: error,
-        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Error interno del servidor. Por favor, intente más tarde.',
+        code: HttpStatus.INTERNAL_SERVER_ERROR,
       });
     }
   }
@@ -159,15 +248,15 @@ export class AuthService {
         secret: envs.JWT_SECRET,
       });
 
-      const data = await this.findOneBy(user.email);
+      const data = await this.findOne(user.email);
 
       return {
         user: {
-          id: data[0].id,
-          email: data[0].email,
-          name: data[0].name,
-          lastName: data[0].lastName,
-          company: data[0].company,
+          id: data.id,
+          email: data.email,
+          name: data.name,
+          lastName: data.lastName,
+          company: data.company,
         },
         token: await this.signJWT(user),
       };
@@ -175,6 +264,53 @@ export class AuthService {
       throw new RpcException({
         message: error,
         status: 401,
+      });
+    }
+  }
+
+  async refreshToken(data: RefreshTokenDto) {
+    try {
+      const { refreshToken } = data;
+
+      const payload = this.jwtService.verify(refreshToken);
+
+      const user = await this.userRepository.findOne({
+        where: { email: payload.email },
+      });
+      if (!user) {
+        throw new RpcException({
+          message: 'Usuario no encontrado',
+          code: HttpStatus.UNAUTHORIZED,
+        });
+      }
+
+      const newPayload = { email: user.email };
+
+      const newAccessToken = this.jwtService.sign(newPayload, {
+        expiresIn: '15m',
+      });
+
+      const newRefreshToken = this.jwtService.sign(newPayload, {
+        expiresIn: '7d',
+      });
+
+      return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+    } catch (error) {
+      this.logger.error('Error en refreshToken', error.stack);
+
+      if (
+        error.name === 'TokenExpiredError' ||
+        error.name === 'JsonWebTokenError'
+      ) {
+        throw new RpcException({
+          message: 'Refresh token inválido o expirado',
+          code: HttpStatus.UNAUTHORIZED,
+        });
+      }
+
+      throw new RpcException({
+        message: 'Error interno del servidor. Por favor, intente más tarde.',
+        code: HttpStatus.INTERNAL_SERVER_ERROR,
       });
     }
   }

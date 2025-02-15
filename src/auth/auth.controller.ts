@@ -3,6 +3,7 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AuthService } from './auth.service';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { LoginDto } from './dto/login-auth.dto';
+// import { LoginDto } from './dto/login-auth.dto';
 
 @Controller()
 export class AuthController {
@@ -10,7 +11,7 @@ export class AuthController {
 
   @MessagePattern('auth.register.user')
   register(@Payload() createAuthDto: CreateAuthDto) {
-    return this.authService.create(createAuthDto);
+    return this.authService.createUser(createAuthDto);
   }
 
   @MessagePattern('auth.login.user')
@@ -23,18 +24,18 @@ export class AuthController {
     return this.authService.verifyToken(token);
   }
 
-  @MessagePattern('auth.get.user')
-  getUser(@Payload() token: string) {
-    return this.authService.findOneByToken(token);
+  @MessagePattern('auth.get.profile')
+  getUser(@Payload() id: string) {
+    return this.authService.profile(id);
   }
 
   @MessagePattern('auth.find.user')
   findUser(@Payload() email: string) {
-    return this.authService.findOneBy(email);
+    return this.authService.findOne(email);
   }
 
-  @MessagePattern('auth.find.user.by.id')
-  findUserById(@Payload() id: string) {
-    return this.authService.findOneById(id);
+  @MessagePattern('auth.refresh.token')
+  refreshToken(@Payload() data: any) {
+    return this.authService.refreshToken(data);
   }
 }
