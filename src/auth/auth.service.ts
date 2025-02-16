@@ -11,10 +11,8 @@ import { Repository } from 'typeorm';
 import { AvailabilityStatus, Profile } from './entities/profile.entity';
 import { Role, RoleEnum } from './entities/role.entity';
 import { UsersRole } from './entities/users_roles.entity';
-import { JwtPayload } from './common/enums/jwt.enum';
 import { LoginDto } from './dto/login-auth.dto';
 import { envs } from './common/envs';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 @Injectable()
 export class AuthService {
@@ -102,7 +100,6 @@ export class AuthService {
           isActive: user.isActive,
           image: profile.profile_picture,
         },
-        token: await this.signJWT({ email: user.email }),
       };
     } catch (error) {
       this.logger.error('Error en createUser', error.stack);
@@ -181,6 +178,8 @@ export class AuthService {
 
       delete user.password;
 
+      const payload = { sub: user.id, email: user.email, name: user.name };
+
       return {
         data: {
           company: user.company,
@@ -191,7 +190,8 @@ export class AuthService {
           isActive: user.isActive,
         },
         status: HttpStatus.OK,
-        token: await this.signJWT({ email: user.email }),
+        accessToken: this.jwtService.sign(payload),
+        refreshToken: this.jwtService.sign(payload, { expiresIn: '7d' }),
       };
     } catch (error) {
       this.logger.error('Error en login', error.stack);
@@ -236,46 +236,14 @@ export class AuthService {
     }
   }
 
-  async signJWT(payload: JwtPayload) {
-    const token = this.jwtService.sign(payload);
-    return token;
-  }
-
-  async verifyToken(token: string) {
+  async refreshToken(refreshToken: string) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { sub, iat, exp, ...user } = this.jwtService.verify(token, {
+      const payload = this.jwtService.verify(refreshToken, {
         secret: envs.JWT_SECRET,
       });
 
-      const data = await this.findOne(user.email);
-
-      return {
-        user: {
-          id: data.id,
-          email: data.email,
-          name: data.name,
-          lastName: data.lastName,
-          company: data.company,
-        },
-        token: await this.signJWT(user),
-      };
-    } catch (error) {
-      throw new RpcException({
-        message: error,
-        status: 401,
-      });
-    }
-  }
-
-  async refreshToken(data: RefreshTokenDto) {
-    try {
-      const { refreshToken } = data;
-
-      const payload = this.jwtService.verify(refreshToken);
-
       const user = await this.userRepository.findOne({
-        where: { email: payload.email },
+        where: { id: payload.sub },
       });
       if (!user) {
         throw new RpcException({
@@ -284,7 +252,7 @@ export class AuthService {
         });
       }
 
-      const newPayload = { email: user.email };
+      const newPayload = { sub: user.id, email: user.email, name: user.name };
 
       const newAccessToken = this.jwtService.sign(newPayload, {
         expiresIn: '15m',
@@ -310,6 +278,45 @@ export class AuthService {
 
       throw new RpcException({
         message: 'Error interno del servidor. Por favor, intente más tarde.',
+        code: HttpStatus.INTERNAL_SERVER_ERROR,
+      });
+    }
+  }
+
+  async verifyToken(token: string) {
+    try {
+      const payload = this.jwtService.verify(token, {
+        secret: envs.JWT_SECRET,
+      });
+
+      const user = await this.userRepository.findOne({
+        where: { id: payload.sub },
+      });
+      if (!user) {
+        throw new RpcException({
+          message: 'Usuario no encontrado',
+          code: HttpStatus.UNAUTHORIZED,
+        });
+      }
+
+      delete user.password;
+
+      return { valid: true, user };
+    } catch (error) {
+      this.logger.error('Error en verifyToken', error.stack);
+
+      if (
+        error.name === 'TokenExpiredError' ||
+        error.name === 'JsonWebTokenError'
+      ) {
+        throw new RpcException({
+          message: 'Token inválido o expirado',
+          code: HttpStatus.UNAUTHORIZED,
+        });
+      }
+
+      throw new RpcException({
+        message: 'Error interno del servidor',
         code: HttpStatus.INTERNAL_SERVER_ERROR,
       });
     }
