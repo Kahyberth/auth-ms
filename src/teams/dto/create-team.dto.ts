@@ -8,5 +8,5 @@ export class CreateTeamDto {
   description: string;
 
   @IsString()
-  leader_id: string;
+  leaderId: string;
 }

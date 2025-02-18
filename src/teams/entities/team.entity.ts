@@ -1,17 +1,17 @@
 import { User } from 'src/auth/entities/users.entity';
 import {
   Entity,
-  PrimaryColumn,
   Column,
   ManyToOne,
   OneToMany,
   JoinColumn,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 import { UsersTeam } from './users_team.entity';
 
 @Entity({ name: 'team' })
 export class Team {
-  @PrimaryColumn()
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column()
