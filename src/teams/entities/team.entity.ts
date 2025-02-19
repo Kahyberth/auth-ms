@@ -20,6 +20,11 @@ export class Team {
   @Column()
   description: string;
 
+
+  @Column({ nullable: true })
+  image: string;
+
+
   // Usamos CURRENT_TIMESTAMP como valor por defecto; ajusta según tu motor de BD
   @Column({
     type: 'timestamp',

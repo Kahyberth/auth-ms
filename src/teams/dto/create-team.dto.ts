@@ -1,4 +1,4 @@
-import { IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class CreateTeamDto {
   @IsString()
@@ -9,4 +9,8 @@ export class CreateTeamDto {
 
   @IsString()
   leaderId: string;
+
+  @IsString()
+  @IsOptional()
+  image?: string;
 }

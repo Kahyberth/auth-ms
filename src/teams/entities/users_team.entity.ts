@@ -12,6 +12,7 @@ export enum TeamRoleEnum {
   BusinessAnalyst = 'Business Analyst',
   Stakeholder = 'Stakeholder',
   SupportEngineer = 'Support Engineer',
+  LEADER = 'LEADER',
 }
 
 @Entity({ name: 'users_teams' })
@@ -34,7 +35,9 @@ export class UsersTeam {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @ManyToOne(() => Team, (team) => team.usersTeams)
+  @ManyToOne(() => Team, (team) => team.usersTeams, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'team_id' })
   team: Team;
 }
