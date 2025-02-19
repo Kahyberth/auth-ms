@@ -14,6 +14,7 @@ interface EnvVars {
   DB_USERNAME: string;
   DB_PASSWORD: string;
   DB_DATABASE: string;
+  FRONTEND_URL: string;
 }
 
 const envsSchema = joi
@@ -29,6 +30,7 @@ const envsSchema = joi
     DB_USERNAME: joi.string().required(),
     DB_PASSWORD: joi.string().required(),
     DB_DATABASE: joi.string().required(),
+    FRONTEND_URL: joi.string().required(),
   })
   .unknown(true);
 
@@ -44,6 +46,7 @@ const { error, value } = envsSchema.validate({
   DB_USERNAME: process.env.DB_USERNAME,
   DB_PASSWORD: process.env.DB_PASSWORD,
   DB_DATABASE: process.env.DB_DATABASE,
+  FRONTEND_URL: process.env.FRONTEND_URL,
 });
 
 if (error) {
@@ -64,4 +67,5 @@ export const envs = {
   DB_USERNAME: envVars.DB_USERNAME,
   DB_PASSWORD: envVars.DB_PASSWORD,
   DB_DATABASE: envVars.DB_DATABASE,
+  FRONTEND_URL: envVars.FRONTEND_URL,
 };

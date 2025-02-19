@@ -4,8 +4,11 @@ import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { User } from 'src/auth/entities/users.entity';
-import { CreateTeamDto, InviteUserTeamDto, LeaveTeamDto, TransferLeadershipDto, UpdateTeamDto, ExpelMemberDto } from './dto';
+import { CreateTeamDto, InviteUserTeamDto, LeaveTeamDto, TransferLeadershipDto, UpdateTeamDto, ExpelMemberDto, InvitationTeamDto } from './dto';
 import { TeamRoleEnum, UsersTeam, Team } from './entities';
+import { JwtService } from '@nestjs/jwt';
+import { Mail } from 'src/mail/mail';
+import { envs } from 'src/auth/common/envs';
 
 @Injectable()
 export class TeamsService {
@@ -17,6 +20,8 @@ export class TeamsService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(UsersTeam)
     private readonly usersTeamRepository: Repository<UsersTeam>,
+    private readonly jwtService: JwtService,
+    private readonly mailService: Mail,
   ) {}
 
   /**
@@ -336,6 +341,115 @@ export class TeamsService {
       throw new RpcException('Equipo no encontrado');
     }
     return team;
+  }
+
+  /**
+   * Generate an invitation link for a user to join a team
+   * @param payload
+   * @returns string
+   * @throws RpcException
+   */
+  async generateInvitationLink(payload: InvitationTeamDto): Promise<string> {
+    
+
+    const token = this.jwtService.sign(payload, {
+      expiresIn: '1d',
+    });
+
+
+    const invitationLink = `${envs.FRONTEND_URL}/invitation?token=${token}`;
+    
+    const team = await this.getTeamById(payload.teamId);
+
+    if (!team) {
+      throw new RpcException('Equipo no encontrado');
+    }
+
+
+    const user = await this.userRepository.findOne({
+      where: {
+        id: payload.inviterId,
+      }
+    })
+
+    const data = {
+      inviterId: payload.inviterId,
+      inviteeEmail: payload.inviteeEmail,
+      teamName: team.name,
+      userName: user.name,
+      enlace: invitationLink,
+    }
+
+    try {
+      await this.mailService.sendInvitationLink(data);
+      return invitationLink;
+    } catch (error) {
+      this.logger.error('Error al enviar la invitación por correo', error.stack);
+      throw new RpcException('Error al enviar la invitación por correo');
+    }
+  }
+
+  /**
+   * Accept an invitation to join a team
+   * @param payload
+   * @returns UsersTeam
+   * @throws RpcException
+   */
+  async acceptInvitation(payload: any): Promise<UsersTeam> {
+    const { token, userId } = payload;
+    const decoded = this.jwtService.decode(token) as InvitationTeamDto;
+
+    if (!decoded) {
+      throw new RpcException('Token de invitación inválido');
+    }
+
+    const team = await this.teamRepository.findOne({ where: { id: decoded.teamId } });
+    if (!team) {
+      throw new RpcException('Equipo no encontrado');
+    }
+
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new RpcException('Usuario no encontrado');
+    }
+
+    const existingMembership = await this.usersTeamRepository.findOne({
+      where: { teamId: decoded.teamId, userId },
+    });
+    if (existingMembership) {
+      throw new RpcException('El usuario ya es miembro del equipo');
+    }
+
+    const invitation = this.usersTeamRepository.create({
+      teamId: decoded.teamId,
+      userId,
+      roleInTeam: TeamRoleEnum.Developer,
+    });
+
+    try {
+      const savedInvitation = await this.usersTeamRepository.save(invitation);
+      return savedInvitation;
+    } catch (error) {
+      this.logger.error('Error al aceptar la invitación', error.stack);
+      throw error;
+    }
+  }
+
+
+  /**
+   *  Verify invitation token
+   * @param token
+   * @returns boolean
+   * @throws RpcException
+   */
+  async verifyInvitationToken(token: string): Promise<boolean> {
+    try {
+      this.jwtService.verify(token);
+      return true;
+    } catch (error) {
+      this.logger.error('Error al verificar el token de invitación', error.stack);
+      throw new RpcException('Token de invitación inválido');
+    }
   }
 
 

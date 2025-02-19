@@ -68,4 +68,22 @@ export class TeamsController {
     return this.teamsService.getAllTeams();
   }
 
+
+  @MessagePattern('teams.invite.user.by.email')
+  inviteUserByEmail(payload: any) {
+    return this.teamsService.generateInvitationLink(payload);
+  }
+
+
+  @MessagePattern('teams.accept.invitation')
+  acceptInvitation(payload: any) {
+    return this.teamsService.acceptInvitation(payload);
+  }
+
+
+  @MessagePattern('teams.verify.invitation')
+  verifyInvitation(payload: any) {
+    return this.teamsService.verifyInvitationToken(payload);
+  }
+
 }
