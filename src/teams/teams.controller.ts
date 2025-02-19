@@ -43,17 +43,17 @@ export class TeamsController {
     return this.teamsService.transferLeadership(payload);
   }
 
-  @MessagePattern('teams.get.teams.by.user')
+  @MessagePattern('teams.by.user')
   getTeamsByUser(userId: string) {
     return this.teamsService.getTeamsForUser(userId);
   }
 
-  @MessagePattern('teams.get.team.members')
+  @MessagePattern('teams.members.by.team')
   getTeamMembers(teamId: string) {
     return this.teamsService.getTeamMembers(teamId);
   }
 
-  @MessagePattern('teams.get.team.by.id')
+  @MessagePattern('teams.by.id')
   getTeamById(teamId: string) {
     return this.teamsService.getTeamById(teamId);
   }

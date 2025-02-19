@@ -190,6 +190,16 @@ export class TeamsService {
     team.leaderId = payload.newLeaderId;
     team.updatedAt = new Date();
 
+   await this.usersTeamRepository.update(
+      { teamId: payload.teamId, userId: payload.currentLeaderId },
+      { roleInTeam: TeamRoleEnum.Developer },
+    );
+   await this.usersTeamRepository.update(
+      { teamId: payload.teamId, userId: payload.newLeaderId },
+      { roleInTeam: TeamRoleEnum.LEADER },
+    );
+
+  
     try {
       const updatedTeam = await this.teamRepository.save(team);
       return updatedTeam;
