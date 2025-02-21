@@ -368,12 +368,11 @@ export class TeamsService {
 
     const user = await this.userRepository.findOne({
       where: {
-        id: payload.inviterId,
+        email: payload.inviteeEmail,
       }
     })
 
     const data = {
-      inviterId: payload.inviterId,
       inviteeEmail: payload.inviteeEmail,
       teamName: team.name,
       userName: user.name,
