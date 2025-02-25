@@ -395,7 +395,7 @@ export class TeamsService {
    * @throws RpcException
    */
   async acceptInvitation(payload: any): Promise<UsersTeam> {
-    const { token, inviteeEmail } = payload;
+    const { token, inviteeEmail, roleInTeam } = payload;
   
     const decoded = this.jwtService.decode(token) as InvitationTeamDto;
 
@@ -423,7 +423,7 @@ export class TeamsService {
     const invitation = this.usersTeamRepository.create({
       teamId: decoded.teamId,
       userId: user.id,
-      roleInTeam: TeamRoleEnum.Developer,
+      roleInTeam: roleInTeam as TeamRoleEnum,
     });
 
     try {
