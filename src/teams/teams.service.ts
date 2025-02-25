@@ -395,7 +395,8 @@ export class TeamsService {
    * @throws RpcException
    */
   async acceptInvitation(payload: any): Promise<UsersTeam> {
-    const { token, userId } = payload;
+    const { token, inviteeEmail } = payload;
+  
     const decoded = this.jwtService.decode(token) as InvitationTeamDto;
 
     if (!decoded) {
@@ -407,13 +408,13 @@ export class TeamsService {
       throw new RpcException('Equipo no encontrado');
     }
 
-    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const user = await this.userRepository.findOne({ where: { email: inviteeEmail } });
     if (!user) {
       throw new RpcException('Usuario no encontrado');
     }
 
     const existingMembership = await this.usersTeamRepository.findOne({
-      where: { teamId: decoded.teamId, userId },
+      where: { teamId: decoded.teamId, userId: user.id },
     });
     if (existingMembership) {
       throw new RpcException('El usuario ya es miembro del equipo');
@@ -421,7 +422,7 @@ export class TeamsService {
 
     const invitation = this.usersTeamRepository.create({
       teamId: decoded.teamId,
-      userId,
+      userId: user.id,
       roleInTeam: TeamRoleEnum.Developer,
     });
 
