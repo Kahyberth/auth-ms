@@ -4,6 +4,11 @@ import { Mail } from './mail/mail';
 import { TeamsModule } from './teams/teams.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { envs } from './auth/common/envs';
+import { Profile } from './auth/entities/profile.entity';
+import { Role } from './auth/entities/role.entity';
+import { UsersRole } from './auth/entities/users_roles.entity';
+import { User } from './auth/entities/users.entity';
+import { Team, UsersTeam } from './teams/entities';
 
 @Module({
   imports: [
@@ -20,7 +25,7 @@ import { envs } from './auth/common/envs';
       extra: {
         ssl: true,
       },
-      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      entities: [Profile, Role, UsersRole, User, Team, UsersTeam],
     }),
   ],
   controllers: [],
