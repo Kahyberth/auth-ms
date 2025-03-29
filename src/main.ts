@@ -15,7 +15,7 @@ async function bootstrap() {
       },
     },
   );
-  await app.listen().then(() => {
+  app.listen().then(() => {
     logger.log(`Auth-ms is listening on ${envs.PORT}`);
   });
 }

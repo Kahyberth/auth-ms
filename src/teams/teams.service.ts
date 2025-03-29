@@ -1,15 +1,24 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Repository } from 'typeorm';
-import { RpcException } from '@nestjs/microservices';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { User } from 'src/auth/entities/users.entity';
-import { CreateTeamDto, InviteUserTeamDto, LeaveTeamDto, TransferLeadershipDto, UpdateTeamDto, ExpelMemberDto, InvitationTeamDto } from './dto';
+import {
+  CreateTeamDto,
+  InviteUserTeamDto,
+  LeaveTeamDto,
+  TransferLeadershipDto,
+  UpdateTeamDto,
+  ExpelMemberDto,
+  InvitationTeamDto,
+} from './dto';
 import { TeamRoleEnum, UsersTeam, Team } from './entities';
 import { JwtService } from '@nestjs/jwt';
 import { Mail } from 'src/mail/mail';
 import { envs } from 'src/auth/common/envs';
-
+import { catchError, firstValueFrom } from 'rxjs';
+import { EntityManager } from 'typeorm';
 @Injectable()
 export class TeamsService {
   private readonly logger = new Logger(TeamsService.name);
@@ -22,6 +31,8 @@ export class TeamsService {
     private readonly usersTeamRepository: Repository<UsersTeam>,
     private readonly jwtService: JwtService,
     private readonly mailService: Mail,
+    private readonly entityManager: EntityManager,
+    @Inject('NATS_SERVICE') private readonly client: ClientProxy,
   ) {}
 
   /**
@@ -30,6 +41,7 @@ export class TeamsService {
    * @returns
    */
   async createTeam(payload: CreateTeamDto) {
+
     const leader = await this.userRepository.findOne({
       where: { id: payload.leaderId },
     });
@@ -37,17 +49,20 @@ export class TeamsService {
       throw new RpcException('El líder del equipo no existe');
     }
 
-    const team = this.teamRepository.create({
-      name: payload.name,
-      description: payload.description,
-      leaderId: payload.leaderId,
-      createdAt: new Date(),
-      image: payload.image || null,
-      updatedAt: new Date(),
-    });
-
-    
+    const queryRunner = this.teamRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
     try {
+
+      const team = this.teamRepository.create({
+        name: payload.name,
+        description: payload.description,
+        leaderId: payload.leaderId,
+        createdAt: new Date(),
+        image: payload.image || null,
+        updatedAt: new Date(),
+      });
+  
       const savedTeam = await this.teamRepository.save(team);
 
       const leaderMembership = this.usersTeamRepository.create({
@@ -57,8 +72,23 @@ export class TeamsService {
       });
       await this.usersTeamRepository.save(leaderMembership);
 
+      await firstValueFrom(
+        this.client.send('channel.create.channel', {
+          name: payload.name,
+          description: payload.description,
+          team_id: savedTeam.id,
+          user_id: payload.leaderId,
+        }).pipe(
+          catchError((error) => {
+            this.logger.error('Error al crear el canal', error.stack);
+            throw error;
+          }),
+        )
+      )
+      await queryRunner.commitTransaction();
       return savedTeam;
     } catch (error) {
+      await queryRunner.rollbackTransaction();
       this.logger.error('Error al crear el equipo', error.stack);
       throw error;
     }
@@ -148,7 +178,9 @@ export class TeamsService {
    * @returns Team
    */
   async updateTeam(payload: UpdateTeamDto): Promise<Team> {
-    const team = await this.teamRepository.findOne({ where: { id: payload.teamId } });
+    const team = await this.teamRepository.findOne({
+      where: { id: payload.teamId },
+    });
     if (!team) {
       throw new RpcException('Equipo no encontrado');
     }
@@ -165,26 +197,25 @@ export class TeamsService {
       this.logger.error('Error al actualizar el equipo', error.stack);
       throw error;
     }
-
   }
 
   /**
    * Transfer leadership of a team
    * @param payload
    * @returns Team
-  */
+   */
   async transferLeadership(payload: TransferLeadershipDto): Promise<Team> {
-    const team = await this.teamRepository.findOne({ where: { id: payload.teamId } });
+    const team = await this.teamRepository.findOne({
+      where: { id: payload.teamId },
+    });
     if (!team) {
       throw new RpcException('Equipo no encontrado');
     }
 
-    
     if (team.leaderId !== payload.currentLeaderId) {
       throw new RpcException('No eres el líder actual del equipo');
     }
 
-  
     const newLeaderMembership = await this.usersTeamRepository.findOne({
       where: { teamId: payload.teamId, userId: payload.newLeaderId },
     });
@@ -195,16 +226,15 @@ export class TeamsService {
     team.leaderId = payload.newLeaderId;
     team.updatedAt = new Date();
 
-   await this.usersTeamRepository.update(
+    await this.usersTeamRepository.update(
       { teamId: payload.teamId, userId: payload.currentLeaderId },
       { roleInTeam: TeamRoleEnum.Developer },
     );
-   await this.usersTeamRepository.update(
+    await this.usersTeamRepository.update(
       { teamId: payload.teamId, userId: payload.newLeaderId },
       { roleInTeam: TeamRoleEnum.LEADER },
     );
 
-  
     try {
       const updatedTeam = await this.teamRepository.save(team);
       return updatedTeam;
@@ -220,8 +250,10 @@ export class TeamsService {
    * @param requesterId
    * @returns message
    */
-  async disbandTeam(payload: { teamId: string, requesterId: string }): Promise<{ message: string }> {
-    
+  async disbandTeam(payload: {
+    teamId: string;
+    requesterId: string;
+  }): Promise<{ message: string }> {
     const { teamId, requesterId } = payload;
 
     const team = await this.teamRepository.findOne({ where: { id: teamId } });
@@ -241,8 +273,7 @@ export class TeamsService {
       this.logger.error('Error al disolver el equipo', error.stack);
       throw error;
     }
-  } 
-
+  }
 
   /**
    * Get all teams a user belongs to
@@ -262,7 +293,9 @@ export class TeamsService {
    * @param teamId
    * @returns User[]
    */
-  async getTeamMembers(teamId: string): Promise<{ member: User; role: string }[]> {
+  async getTeamMembers(
+    teamId: string,
+  ): Promise<{ member: User; role: string }[]> {
     const memberships = await this.usersTeamRepository.find({
       where: { teamId },
       relations: ['user'],
@@ -278,21 +311,18 @@ export class TeamsService {
    * @param payload
    * @returns message
    * @throws RpcException
-  */
+   */
   async expelMember(payload: ExpelMemberDto): Promise<{ message: string }> {
     const { teamId, leaderId, memberId } = payload;
-
 
     const team = await this.teamRepository.findOne({ where: { id: teamId } });
     if (!team) {
       throw new RpcException('Equipo no encontrado');
     }
 
-
     if (team.leaderId !== leaderId) {
       throw new RpcException('Solo el líder puede expulsar a miembros');
     }
-
 
     if (memberId === leaderId) {
       throw new RpcException('El líder no puede expulsarse a sí mismo');
@@ -350,40 +380,39 @@ export class TeamsService {
    * @throws RpcException
    */
   async generateInvitationLink(payload: InvitationTeamDto): Promise<string> {
-    
-
     const token = this.jwtService.sign(payload, {
       expiresIn: '1d',
     });
 
-
     const invitationLink = `${envs.FRONTEND_URL}/invitation?token=${token}`;
-    
+
     const team = await this.getTeamById(payload.teamId);
 
     if (!team) {
       throw new RpcException('Equipo no encontrado');
     }
 
-
     const user = await this.userRepository.findOne({
       where: {
         email: payload.inviteeEmail,
-      }
-    })
+      },
+    });
 
     const data = {
       inviteeEmail: payload.inviteeEmail,
       teamName: team.name,
       userName: user.name,
       enlace: invitationLink,
-    }
+    };
 
     try {
       await this.mailService.sendInvitationLink(data);
       return invitationLink;
     } catch (error) {
-      this.logger.error('Error al enviar la invitación por correo', error.stack);
+      this.logger.error(
+        'Error al enviar la invitación por correo',
+        error.stack,
+      );
       throw new RpcException('Error al enviar la invitación por correo');
     }
   }
@@ -396,19 +425,23 @@ export class TeamsService {
    */
   async acceptInvitation(payload: any): Promise<UsersTeam> {
     const { token, inviteeEmail, roleInTeam } = payload;
-  
+
     const decoded = this.jwtService.decode(token) as InvitationTeamDto;
 
     if (!decoded) {
       throw new RpcException('Token de invitación inválido');
     }
 
-    const team = await this.teamRepository.findOne({ where: { id: decoded.teamId } });
+    const team = await this.teamRepository.findOne({
+      where: { id: decoded.teamId },
+    });
     if (!team) {
       throw new RpcException('Equipo no encontrado');
     }
 
-    const user = await this.userRepository.findOne({ where: { email: inviteeEmail } });
+    const user = await this.userRepository.findOne({
+      where: { email: inviteeEmail },
+    });
     if (!user) {
       throw new RpcException('Usuario no encontrado');
     }
@@ -435,7 +468,6 @@ export class TeamsService {
     }
   }
 
-
   /**
    *  Verify invitation token
    * @param token
@@ -447,10 +479,11 @@ export class TeamsService {
       this.jwtService.verify(token);
       return true;
     } catch (error) {
-      this.logger.error('Error al verificar el token de invitación', error.stack);
+      this.logger.error(
+        'Error al verificar el token de invitación',
+        error.stack,
+      );
       throw new RpcException('Token de invitación inválido');
     }
   }
-
-
 }
