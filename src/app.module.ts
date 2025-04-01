@@ -9,6 +9,7 @@ import { Role } from './auth/entities/role.entity';
 import { UsersRole } from './auth/entities/users_roles.entity';
 import { User } from './auth/entities/users.entity';
 import { Team, UsersTeam } from './teams/entities';
+import { SocketModule } from './socket/socket.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { Team, UsersTeam } from './teams/entities';
       },
       entities: [Profile, Role, UsersRole, User, Team, UsersTeam],
     }),
+    SocketModule,
   ],
   controllers: [],
   providers: [Mail],
