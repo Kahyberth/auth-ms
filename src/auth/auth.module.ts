@@ -17,7 +17,7 @@ import { Profile } from './entities/profile.entity';
     JwtModule.register({
       global: true,
       secret: envs.JWT_SECRET,
-      signOptions: { expiresIn: '5m' },
+      signOptions: { expiresIn: '8d' },
     }),
     TypeOrmModule.forFeature([UsersRole, Role, User, Profile]),
   ],

@@ -16,6 +16,8 @@ interface EnvVars {
   DB_DATABASE: string;
   FRONTEND_URL: string;
   NATS_SERVERS: string;
+  WS_PORT: number;
+  ORIGIN_CORS: string;
 }
 
 const envsSchema = joi
@@ -33,6 +35,8 @@ const envsSchema = joi
     DB_DATABASE: joi.string().required(),
     FRONTEND_URL: joi.string().required(),
     NATS_SERVERS: joi.string().required(),
+    WS_PORT: joi.number().default(3000),
+    ORIGIN_CORS: joi.string().default('*'),
   })
   .unknown(true);
 
@@ -50,6 +54,9 @@ const { error, value } = envsSchema.validate({
   DB_DATABASE: process.env.DB_DATABASE,
   FRONTEND_URL: process.env.FRONTEND_URL,
   NATS_SERVERS: process.env.NATS_SERVERS,
+  PORT: process.env.PORT,
+  WS_PORT: process.env.WS_PORT,
+  ORIGIN_CORS: process.env.ORIGIN_CORS,
 });
 
 if (error) {
@@ -72,4 +79,6 @@ export const envs = {
   DB_DATABASE: envVars.DB_DATABASE,
   FRONTEND_URL: envVars.FRONTEND_URL,
   NATS_SERVERS: envVars.NATS_SERVERS,
+  WS_PORT: envVars.WS_PORT,
+  ORIGIN_CORS: envVars.ORIGIN_CORS,
 };

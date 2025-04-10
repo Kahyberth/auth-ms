@@ -31,5 +31,6 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
     ]),
     AuthModule,
   ],
+  exports: [ TeamsService, TypeOrmModule.forFeature([Team, UsersTeam])],
 })
 export class TeamsModule {}

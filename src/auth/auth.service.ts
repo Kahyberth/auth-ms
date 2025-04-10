@@ -178,7 +178,11 @@ export class AuthService {
 
       delete user.password;
 
-      const payload = { sub: user.id, email: user.email, name: user.name };
+      
+
+      const payload = { id: user.id };
+
+      console.log(payload);
 
       return {
         data: {
@@ -191,7 +195,7 @@ export class AuthService {
         },
         status: HttpStatus.OK,
         accessToken: this.jwtService.sign(payload),
-        refreshToken: this.jwtService.sign(payload, { expiresIn: '7d' }),
+        refreshToken: this.jwtService.sign(payload, { expiresIn: '1d' }),
       };
     } catch (error) {
       this.logger.error('Error en login', error.stack);
@@ -243,8 +247,9 @@ export class AuthService {
       });
 
       const user = await this.userRepository.findOne({
-        where: { id: payload.sub },
+        where: { id: payload.id },
       });
+
       if (!user) {
         throw new RpcException({
           message: 'Usuario no encontrado',
@@ -252,10 +257,10 @@ export class AuthService {
         });
       }
 
-      const newPayload = { sub: user.id, email: user.email, name: user.name };
+      const newPayload = { id: user.id };
 
       const newAccessToken = this.jwtService.sign(newPayload, {
-        expiresIn: '3h',
+        expiresIn: '10m',
       });
 
       const newRefreshToken = this.jwtService.sign(newPayload, {
@@ -289,9 +294,12 @@ export class AuthService {
         secret: envs.JWT_SECRET,
       });
 
+      console.log(payload);
+
       const user = await this.userRepository.findOne({
-        where: { id: payload.sub },
+        where: { id: payload.id },
       });
+
       if (!user) {
         throw new RpcException({
           message: 'Usuario no encontrado',

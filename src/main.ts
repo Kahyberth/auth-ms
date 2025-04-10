@@ -18,5 +18,12 @@ async function bootstrap() {
   app.listen().then(() => {
     logger.log(`Auth-ms is listening on ${envs.PORT}`);
   });
+
+
+  const ws = await NestFactory.create(AppModule);
+  ws.enableCors();
+  await ws.listen(envs.WS_PORT).then(() => {
+    logger.log('Websocket is listening');
+  });
 }
 bootstrap();
