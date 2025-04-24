@@ -49,7 +49,7 @@ describe('AuthService', () => {
 
     service = module.get<AuthService>(AuthService);
 
-    // reset mocks
+
     jest.clearAllMocks();
   });
 

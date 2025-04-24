@@ -3,7 +3,7 @@ import { Repository } from 'typeorm';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { User } from 'src/auth/entities/users.entity';
+import { User } from '../auth/entities/users.entity';
 import {
   CreateTeamDto,
   InviteUserTeamDto,
@@ -15,8 +15,8 @@ import {
 } from './dto';
 import { TeamRoleEnum, UsersTeam, Team } from './entities';
 import { JwtService } from '@nestjs/jwt';
-import { Mail } from 'src/mail/mail';
-import { envs } from 'src/auth/common/envs';
+import { Mail } from '../mail/mail';
+import { envs } from '../auth/common/envs';
 import { catchError, firstValueFrom } from 'rxjs';
 import { EntityManager } from 'typeorm';
 @Injectable()

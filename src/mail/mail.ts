@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { htmlTemplate } from './html.template';
-import { envs } from 'src/auth/common/envs';
+import { envs } from '../auth/common/envs';
 import { sendInvitationTemplate } from './sendInvitation.template';
 @Injectable()
 export class Mail {
