@@ -4,7 +4,6 @@ import * as bcrypt from 'bcrypt';
 import * as md5 from 'md5';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { RpcException } from '@nestjs/microservices';
-import { Mail } from 'src/mail/mail';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/users.entity';
 import { Repository } from 'typeorm';
@@ -28,7 +27,6 @@ export class AuthService {
     @InjectRepository(UsersRole)
     private readonly userRoleRepository: Repository<UsersRole>,
     private readonly jwtService: JwtService,
-    private readonly mailService: Mail,
   ) {}
 
   async createUser(data: CreateAuthDto) {

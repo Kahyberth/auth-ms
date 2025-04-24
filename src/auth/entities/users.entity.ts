@@ -7,8 +7,8 @@ import {
 } from 'typeorm';
 import { Profile } from './profile.entity';
 import { UsersRole } from './users_roles.entity';
-import { UsersTeam } from 'src/teams/entities/users_team.entity';
-import { Team } from 'src/teams/entities/team.entity';
+import { UsersTeam } from '../../teams/entities/users_team.entity';
+import { Team } from '../../teams/entities/team.entity';
 
 @Entity({ name: 'users_table' })
 export class User {
