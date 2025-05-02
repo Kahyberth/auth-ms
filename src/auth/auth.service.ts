@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import * as md5 from 'md5';
@@ -12,6 +12,7 @@ import { Role, RoleEnum } from './entities/role.entity';
 import { UsersRole } from './entities/users_roles.entity';
 import { LoginDto } from './dto/login-auth.dto';
 import { envs } from './common/envs';
+import { Mail } from 'src/mail/mail';
 
 @Injectable()
 export class AuthService {
@@ -27,6 +28,8 @@ export class AuthService {
     @InjectRepository(UsersRole)
     private readonly userRoleRepository: Repository<UsersRole>,
     private readonly jwtService: JwtService,
+    @Inject(Mail)
+    private readonly mailService: Mail,
   ) {}
 
   async createUser(data: CreateAuthDto) {
@@ -87,6 +90,8 @@ export class AuthService {
       }
 
       delete user.password;
+
+      await this.mailService.sendGreetingsToUser(user.email);
 
       return {
         user: {
@@ -176,8 +181,6 @@ export class AuthService {
 
       delete user.password;
 
-      
-
       const payload = { id: user.id };
 
       console.log(payload);
@@ -226,6 +229,35 @@ export class AuthService {
       return user;
     } catch (error) {
       this.logger.error('Error en findOneBy', error.stack);
+
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
+      throw new RpcException({
+        message: 'Error interno del servidor. Por favor, intente más tarde.',
+        code: HttpStatus.INTERNAL_SERVER_ERROR,
+      });
+    }
+  }
+
+  async findOneById(id: string) {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id },
+        relations: ['profile'],
+      });
+
+      if (!user) {
+        throw new RpcException({
+          message: 'Usuario no encontrado.',
+          code: HttpStatus.NOT_FOUND,
+        });
+      }
+
+      return user;
+    } catch (error) {
+      this.logger.error('Error en findOneById', error.stack);
 
       if (error instanceof RpcException) {
         throw error;

@@ -34,6 +34,11 @@ export class AuthController {
     return this.authService.findOne(email);
   }
 
+  @MessagePattern('auth.find.user.by.id')
+  findUserById(@Payload() id: string) {
+    return this.authService.findOneById(id);
+  }
+
   @MessagePattern('auth.refresh.token')
   refreshToken(@Payload() refreshToken: string) {
     return this.authService.refreshToken(refreshToken);

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
-import { htmlTemplate } from './html.template';
+import { sendGreetings } from './html.template';
 import { envs } from '../auth/common/envs';
 import { sendInvitationTemplate } from './sendInvitation.template';
 @Injectable()
@@ -18,14 +18,13 @@ export class Mail {
     });
   }
 
-  async sendOtpEmail(to: string, otpCode: string) {
+  async sendGreetingsToUser(to: string) {
     const mailOptions = {
-      from: 'no-reply@ejemplo.com',
+      from: envs.MAIL_USERNAME,
       to,
-      subject: 'Tu código de verificación',
-      html: htmlTemplate(otpCode),
+      subject: 'Bienvenido a nuestra plataforma! 🎉',
+      html: sendGreetings(),
     };
-
     return await this.transporter.sendMail(mailOptions);
   }
 
