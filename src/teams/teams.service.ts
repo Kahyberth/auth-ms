@@ -41,7 +41,6 @@ export class TeamsService {
    * @returns
    */
   async createTeam(payload: CreateTeamDto) {
-
     const leader = await this.userRepository.findOne({
       where: { id: payload.leaderId },
     });
@@ -49,11 +48,11 @@ export class TeamsService {
       throw new RpcException('El líder del equipo no existe');
     }
 
-    const queryRunner = this.teamRepository.manager.connection.createQueryRunner();
+    const queryRunner =
+      this.teamRepository.manager.connection.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
-
       const team = this.teamRepository.create({
         name: payload.name,
         description: payload.description,
@@ -62,7 +61,7 @@ export class TeamsService {
         image: payload.image || null,
         updatedAt: new Date(),
       });
-  
+
       const savedTeam = await this.teamRepository.save(team);
 
       const leaderMembership = this.usersTeamRepository.create({
@@ -73,18 +72,20 @@ export class TeamsService {
       await this.usersTeamRepository.save(leaderMembership);
 
       await firstValueFrom(
-        this.client.send('channel.create.channel', {
-          name: payload.name,
-          description: payload.description,
-          team_id: savedTeam.id,
-          user_id: payload.leaderId,
-        }).pipe(
-          catchError((error) => {
-            this.logger.error('Error al crear el canal', error.stack);
-            throw error;
-          }),
-        )
-      )
+        this.client
+          .send('channel.create.channel', {
+            name: payload.name,
+            description: payload.description,
+            team_id: savedTeam.id,
+            user_id: payload.leaderId,
+          })
+          .pipe(
+            catchError((error) => {
+              this.logger.error('Error al crear el canal', error.stack);
+              throw error;
+            }),
+          ),
+      );
       await queryRunner.commitTransaction();
       return savedTeam;
     } catch (error) {
@@ -288,6 +289,22 @@ export class TeamsService {
     return memberships.map((membership) => membership.team);
   }
 
+   /**
+    * Get teams for a user with pagination
+    * @param userId 
+    * @param page 
+    * @returns Team[]
+    */
+   async getTeamsForUserPaginated(userId: string, page: number): Promise<Team[]> {
+    const [teams] = await this.usersTeamRepository.findAndCount({
+      where: { userId: userId },
+      relations: ['team'],
+      skip: (page - 1) * 5,
+      take: 5,
+    });
+    return teams.map((membership) => membership.team);
+  }
+
   /**
    * Get all members of a team
    * @param teamId
@@ -345,17 +362,46 @@ export class TeamsService {
   }
 
   /**
-   * Get all teams
+   * Get all teams with pagination
+   * @param page
    * @returns Team[]
    * @throws RpcException
    */
-  async getAllTeams(): Promise<Team[]> {
+  async getAllTeamsPaginated(page: number): Promise<Team[]> {
     try {
-      const teams = await this.teamRepository.find();
+      const [teams] = await this.teamRepository.findAndCount({
+        skip: (page - 1) * 5,
+        take: 5,
+      });
       return teams;
     } catch (error) {
       this.logger.error('Error al obtener los equipos', error.stack);
       throw new RpcException('Error al obtener los equipos');
+    }
+  }
+
+  /**
+   * Get all members of a team with pagination
+   * @param teamId
+   * @param page
+   * @returns UsersTeam[]
+   * @throws RpcException
+   */
+  async getAllMembersByTeamPaginated(
+    teamId: string,
+    page: number,
+  ): Promise<UsersTeam[]> {
+    try {
+      const [members] = await this.usersTeamRepository.findAndCount({
+        where: { teamId },
+        relations: ['user'],
+        skip: (page - 1) * 5,
+        take: 5,
+      });
+      return members;
+    } catch (error) {
+      this.logger.error('Error al obtener los miembros', error.stack);
+      throw new RpcException('Error al obtener los miembros');
     }
   }
 

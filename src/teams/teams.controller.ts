@@ -1,13 +1,12 @@
 import { Controller } from '@nestjs/common';
 import { TeamsService } from './teams.service';
-import { MessagePattern } from '@nestjs/microservices';
+import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
 import { InviteUserTeamDto } from './dto/invite-team.dto';
 import { TransferLeadershipDto } from './dto/transfer-leader.dto';
 import { CreateTeamDto } from './dto/create-team.dto';
 import { LeaveTeamDto } from './dto/leave-team.dto';
 import { ExpelMemberDto } from './dto/expel-member.dto';
 import { UpdateTeamDto } from './dto';
-
 
 @Controller()
 export class TeamsController {
@@ -44,8 +43,11 @@ export class TeamsController {
   }
 
   @MessagePattern('teams.by.user')
-  getTeamsByUser(userId: string) {
-    return this.teamsService.getTeamsForUser(userId);
+  getTeamsByUser(@Payload() data: any) {
+    if (!data.page) data.page = 1;
+    if (!data.userId) throw new RpcException('User ID is required');
+    const { page, userId } = data;
+    return this.teamsService.getTeamsForUserPaginated(userId, page);
   }
 
   @MessagePattern('teams.members.by.team')
@@ -64,26 +66,30 @@ export class TeamsController {
   }
 
   @MessagePattern('teams.get.all.teams')
-  getAllTeams() {
-    return this.teamsService.getAllTeams();
+  getAllTeams(@Payload() page: number) {
+    return this.teamsService.getAllTeamsPaginated(page);
   }
-
 
   @MessagePattern('teams.invite.user.by.email')
   inviteUserByEmail(payload: any) {
     return this.teamsService.generateInvitationLink(payload);
   }
 
-
   @MessagePattern('teams.accept.invitation')
   acceptInvitation(payload: any) {
     return this.teamsService.acceptInvitation(payload);
   }
 
+  @MessagePattern('teams.paginate.members.by.team')
+  getPaginatedMembersByTeam(payload: any) {
+    if (!payload.page) payload.page = 1;
+    if (!payload.teamId) throw new RpcException('Team ID is required');
+    const { page, teamId } = payload;
+    return this.teamsService.getAllMembersByTeamPaginated(teamId, page);
+  }
 
   @MessagePattern('teams.verify.invitation')
   verifyInvitation(payload: any) {
     return this.teamsService.verifyInvitationToken(payload);
   }
-
 }
