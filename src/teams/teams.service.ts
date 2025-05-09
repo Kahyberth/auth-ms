@@ -390,7 +390,7 @@ export class TeamsService {
   async getAllMembersByTeamPaginated(
     teamId: string,
     page: number,
-  ): Promise<UsersTeam[]> {
+  ): Promise<{ member: User; role: string }[]> {
     try {
       const [members] = await this.usersTeamRepository.findAndCount({
         where: { teamId },
@@ -398,7 +398,11 @@ export class TeamsService {
         skip: (page - 1) * 5,
         take: 5,
       });
-      return members;
+      
+      return members.map((membership) => ({
+        member: membership.user,
+        role: membership.roleInTeam
+      }));
     } catch (error) {
       this.logger.error('Error al obtener los miembros', error.stack);
       throw new RpcException('Error al obtener los miembros');
