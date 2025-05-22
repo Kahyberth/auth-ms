@@ -293,16 +293,34 @@ export class TeamsService {
     * Get teams for a user with pagination
     * @param userId 
     * @param page 
-    * @returns Team[]
+    * @returns { data: Team[], meta: { total, totalPages, page, perPage } }
     */
-   async getTeamsForUserPaginated(userId: string, page: number): Promise<Team[]> {
-    const [teams] = await this.usersTeamRepository.findAndCount({
+   async getTeamsForUserPaginated(userId: string, page: number): Promise<any> {
+    console.log('Getting teams for user', userId, 'page', page);
+    
+    const itemsPerPage = 6;
+    
+    const [teams, total] = await this.usersTeamRepository.findAndCount({
       where: { userId: userId },
       relations: ['team'],
-      skip: (page - 1) * 5,
-      take: 5,
+      skip: (page - 1) * itemsPerPage,
+      take: itemsPerPage,
     });
-    return teams.map((membership) => membership.team);
+    
+    const teamsData = teams.map((membership) => membership.team);
+    const totalPages = Math.ceil(total / itemsPerPage);
+    
+    console.log('Found', teamsData.length, 'teams, total', total, 'pages', totalPages);
+    
+    return {
+      data: teamsData,
+      meta: {
+        total,
+        totalPages,
+        page,
+        perPage: itemsPerPage
+      }
+    };
   }
 
   /**
@@ -369,9 +387,10 @@ export class TeamsService {
    */
   async getAllTeamsPaginated(page: number): Promise<Team[]> {
     try {
+      const itemsPerPage = 6;
       const [teams] = await this.teamRepository.findAndCount({
-        skip: (page - 1) * 5,
-        take: 5,
+        skip: (page - 1) * itemsPerPage,
+        take: itemsPerPage,
       });
       return teams;
     } catch (error) {
@@ -392,11 +411,12 @@ export class TeamsService {
     page: number,
   ): Promise<{ member: User; role: string }[]> {
     try {
+      const itemsPerPage = 6;
       const [members] = await this.usersTeamRepository.findAndCount({
         where: { teamId },
         relations: ['user'],
-        skip: (page - 1) * 5,
-        take: 5,
+        skip: (page - 1) * itemsPerPage,
+        take: itemsPerPage,
       });
       
       return members.map((membership) => ({
