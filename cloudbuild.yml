@@ -19,29 +19,29 @@ options:
 
 availableSecrets:
   secretManager:
-  - versionName: projects/495852363735/secrets/NATS_SERVERS
+  - versionName: projects/495852363735/secrets/NATS_SERVERS/versions/latest
     env: 'NATS_SERVERS'
-  - versionName: projects/495852363735/secrets/JWT_SECRET
+  - versionName: projects/495852363735/secrets/JWT_SECRET/versions/latest
     env: 'JWT_SECRET'
-  - versionName: projects/495852363735/secrets/MAIL_USERNAME
+  - versionName: projects/495852363735/secrets/MAIL_USERNAME/versions/latest
     env: 'MAIL_USERNAME'
-  - versionName: projects/495852363735/secrets/MAIL_PASSWORD
+  - versionName: projects/495852363735/secrets/MAIL_PASSWORD/versions/latest
     env: 'MAIL_PASSWORD'
-  - versionName: projects/495852363735/secrets/MAIL_HOST
+  - versionName: projects/495852363735/secrets/MAIL_HOST/versions/latest
     env: 'MAIL_HOST'
-  - versionName: projects/495852363735/secrets/AUTH_PORT
+  - versionName: projects/495852363735/secrets/AUTH_PORT/versions/latest
     env: 'AUTH_PORT'
-  - versionName: projects/495852363735/secrets/SALT
+  - versionName: projects/495852363735/secrets/SALT/versions/latest
     env: 'SALT'
-  - versionName: projects/495852363735/secrets/FRONTEND_URL
+  - versionName: projects/495852363735/secrets/FRONTEND_URL/versions/latest
     env: 'FRONTEND_URL'
-  - versionName: projects/495852363735/secrets/AUTH_DB_HOST
+  - versionName: projects/495852363735/secrets/AUTH_DB_HOST/versions/latest
     env: 'AUTH_DB_HOST'
-  - versionName: projects/495852363735/secrets/AUTH_DB_PORT
+  - versionName: projects/495852363735/secrets/AUTH_DB_PORT/versions/latest
     env: 'AUTH_DB_PORT'
-  - versionName: projects/495852363735/secrets/AUTH_DB_USERNAME
+  - versionName: projects/495852363735/secrets/AUTH_DB_USERNAME/versions/latest
     env: 'AUTH_DB_USERNAME'
-  - versionName: projects/495852363735/secrets/AUTH_DB_PASSWORD
+  - versionName: projects/495852363735/secrets/AUTH_DB_PASSWORD/versions/latest
     env: 'AUTH_DB_PASSWORD'
-  - versionName: projects/495852363735/secrets/AUTH_DB_DATABASE
+  - versionName: projects/495852363735/secrets/AUTH_DB_DATABASE/versions/latest
     env: 'AUTH_DB_DATABASE'
