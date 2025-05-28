@@ -1,8 +1,8 @@
 import { WebSocketGateway, SubscribeMessage, MessageBody, OnGatewayConnection, OnGatewayDisconnect, WebSocketServer } from '@nestjs/websockets';
 import { Socket, Server } from 'socket.io';
-import { envs } from 'src/auth/common/envs';
+import { envs } from '../auth/common/envs';
 import { UserTeams } from './interface/socket.interface';
-import { TeamsService } from 'src/teams/teams.service';
+import { TeamsService } from '../teams/teams.service';
 
 
 

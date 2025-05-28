@@ -12,7 +12,7 @@ import { Role, RoleEnum } from './entities/role.entity';
 import { UsersRole } from './entities/users_roles.entity';
 import { LoginDto } from './dto/login-auth.dto';
 import { envs } from './common/envs';
-import { Mail } from 'src/mail/mail';
+import { Mail } from '../mail/mail';
 
 @Injectable()
 export class AuthService {

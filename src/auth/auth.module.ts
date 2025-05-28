@@ -3,7 +3,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { envs } from './common/envs';
-import { Mail } from 'src/mail/mail';
+import { Mail } from '../mail/mail';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersRole } from './entities/users_roles.entity';
 import { Role } from './entities/role.entity';
