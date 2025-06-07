@@ -43,4 +43,10 @@ export class AuthController {
   refreshToken(@Payload() refreshToken: string) {
     return this.authService.refreshToken(refreshToken);
   }
+
+  
+  @MessagePattern('auth.ping')
+  ping() {
+    return 'pong';
+  }
 }
