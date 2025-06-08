@@ -27,11 +27,20 @@ RUN bun run build
 # Final stage
 FROM oven/bun:1 AS final
 
+
+USER root
+RUN apt-get update \
+  && apt-get install -y iputils-ping telnet \
+  && rm -rf /var/lib/apt/lists/*
+
+
 WORKDIR /usr/src/app
 
 COPY --from=builder /usr/src/app/node_modules node_modules
 
 COPY --from=builder /usr/src/app/dist dist
+
+
 
 
 USER bun

@@ -25,7 +25,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
         name: 'NATS_SERVICE',
         transport: Transport.NATS,
         options: {
-          servers: [envs.NATS_SERVERS || 'nats://localhost:4222'],
+          servers: envs.NATS_SERVERS,
         },
       },
     ]),
