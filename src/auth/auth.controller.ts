@@ -3,6 +3,7 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AuthService } from './auth.service';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { LoginDto } from './dto/login-auth.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 // import { LoginDto } from './dto/login-auth.dto';
 
 @Controller()
@@ -42,6 +43,11 @@ export class AuthController {
   @MessagePattern('auth.refresh.token')
   refreshToken(@Payload() refreshToken: string) {
     return this.authService.refreshToken(refreshToken);
+  }
+
+  @MessagePattern('auth.update.profile')
+  updateProfile(@Payload() updateProfileDto: UpdateProfileDto) {
+    return this.authService.updateProfile(updateProfileDto);
   }
 
   

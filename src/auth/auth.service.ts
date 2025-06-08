@@ -13,6 +13,7 @@ import { UsersRole } from './entities/users_roles.entity';
 import { LoginDto } from './dto/login-auth.dto';
 import { envs } from './common/envs';
 import { Mail } from '../mail/mail';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class AuthService {
@@ -355,6 +356,65 @@ export class AuthService {
 
       throw new RpcException({
         message: 'Error interno del servidor',
+        code: HttpStatus.INTERNAL_SERVER_ERROR,
+      });
+    }
+  }
+
+  async updateProfile(updateProfileDto: UpdateProfileDto) {
+    try {
+      const { userId, bio, location, skills, social_links, experience, education, profile_picture, profile_banner, phone, company } = updateProfileDto;
+
+      const user = await this.userRepository.findOne({ 
+        where: { id: userId },
+        relations: ['profile']
+      });
+
+      if (!user) {
+        throw new RpcException({
+          message: 'User not found.',
+          code: HttpStatus.NOT_FOUND,
+        });
+      }
+
+      if (phone !== undefined) {
+        user.phone = phone;
+      }
+      
+      if (company !== undefined) {
+        user.company = company;
+      }
+      
+      await this.userRepository.save(user);
+
+      const profile = user.profile;
+
+      if (bio !== undefined) profile.bio = bio;
+      if (location !== undefined) profile.location = location;
+      if (skills !== undefined) profile.skills = skills;
+      if (experience !== undefined) profile.experience = experience;
+      if (education !== undefined) profile.education = education;
+      if (social_links !== undefined) profile.social_links = social_links;
+      if (profile_picture !== undefined) profile.profile_picture = profile_picture;
+      if (profile_banner !== undefined) profile.profile_banner = profile_banner;
+      
+      profile.updatedAt = new Date();
+
+      await this.profileRepository.save(profile);
+
+      return {
+        message: 'Profile updated successfully',
+        status: HttpStatus.OK,
+      };
+    } catch (error) {
+      this.logger.error('Error in updateProfile', error.stack);
+
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
+      throw new RpcException({
+        message: 'Internal server error. Please try again later.',
         code: HttpStatus.INTERNAL_SERVER_ERROR,
       });
     }
