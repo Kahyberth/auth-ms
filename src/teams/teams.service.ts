@@ -102,7 +102,6 @@ export class TeamsService {
    */
   async inviteUserToTeam(payload: InviteUserTeamDto): Promise<UsersTeam> {
     const { teamId, inviterId, inviteeId, roleInTeam } = payload;
-    console.log(payload);
     const team = await this.teamRepository.findOne({
       where: { id: teamId },
       relations: ['leader'],
