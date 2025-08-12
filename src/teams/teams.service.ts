@@ -17,8 +17,8 @@ import { TeamRoleEnum, UsersTeam, Team } from './entities';
 import { JwtService } from '@nestjs/jwt';
 import { Mail } from '../mail/mail';
 import { envs } from '../auth/common/envs';
-import { catchError, firstValueFrom } from 'rxjs';
-import { EntityManager } from 'typeorm';
+
+import { TeamStatus } from './entities/team.entity';
 @Injectable()
 export class TeamsService {
   private readonly logger = new Logger(TeamsService.name);
@@ -31,7 +31,6 @@ export class TeamsService {
     private readonly usersTeamRepository: Repository<UsersTeam>,
     private readonly jwtService: JwtService,
     private readonly mailService: Mail,
-    private readonly entityManager: EntityManager,
     @Inject('NATS_SERVICE') private readonly client: ClientProxy,
   ) {}
 
@@ -41,59 +40,59 @@ export class TeamsService {
    * @returns
    */
   async createTeam(payload: CreateTeamDto) {
-    const leader = await this.userRepository.findOne({
-      where: { id: payload.leaderId },
+
+    const team = this.teamRepository.create({
+      name: payload.name,
+      description: payload.description,
+      leaderId: payload.leaderId,
+      image: payload.image || null,
+      status: TeamStatus.PENDING,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
-    if (!leader) {
-      throw new RpcException('El líder del equipo no existe');
-    }
 
-    const queryRunner =
-      this.teamRepository.manager.connection.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-    try {
-      const team = this.teamRepository.create({
-        name: payload.name,
-        description: payload.description,
-        leaderId: payload.leaderId,
-        createdAt: new Date(),
-        image: payload.image || null,
-        updatedAt: new Date(),
-      });
+  
+    const savedTeam = await this.teamRepository.save(team);
 
-      const savedTeam = await this.teamRepository.save(team);
+   //* Communicate with server-ms to create the server
+    this.client.emit('server.create.room', {
+      teamId: savedTeam.id,
+      serverName: savedTeam.name,
+      description: savedTeam.description,
+      created_by: savedTeam.leaderId,
+    });
 
-      const leaderMembership = this.usersTeamRepository.create({
-        teamId: savedTeam.id,
-        userId: leader.id,
-        roleInTeam: TeamRoleEnum.LEADER,
-      });
-      await this.usersTeamRepository.save(leaderMembership);
-
-      await firstValueFrom(
-        this.client
-          .send('channel.create.channel', {
-            name: payload.name,
-            description: payload.description,
-            team_id: savedTeam.id,
-            user_id: payload.leaderId,
-          })
-          .pipe(
-            catchError((error) => {
-              this.logger.error('Error al crear el canal', error.stack);
-              throw error;
-            }),
-          ),
-      );
-      await queryRunner.commitTransaction();
-      return savedTeam;
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      this.logger.error('Error al crear el equipo', error.stack);
-      throw error;
-    }
+    return savedTeam;
   }
+
+
+  /**
+   * Update team status to active when server is created
+   * @description This is a callback function that is called when the server is created
+   * @param teamId 
+   * @returns 
+   */
+  async onChannelCreated(payload: any) {
+    console.log('payload', payload)
+    await this.teamRepository.update(payload.teamId, { status: TeamStatus.ACTIVE });
+    const leader = this.usersTeamRepository.create({
+      teamId: payload.teamId,
+      userId: payload.leaderId,
+      roleInTeam: TeamRoleEnum.LEADER,
+    });
+    await this.usersTeamRepository.save(leader);
+  }
+
+  /**
+   * Delete team if server creation fails
+   * @description This is a callback function that is called when the server creation fails
+   * @param teamId 
+   */
+  async onChannelCreateFailed(teamId: string) {
+    await this.teamRepository.delete(teamId);
+  }
+
+
 
   /**
    * Invite a user to a team

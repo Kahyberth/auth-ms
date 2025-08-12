@@ -10,7 +10,7 @@ import { UpdateTeamDto } from './dto';
 
 @Controller()
 export class TeamsController {
-  constructor(private readonly teamsService: TeamsService) {}
+  constructor(private readonly teamsService: TeamsService) { }
 
   @MessagePattern('teams.create.team')
   createTeam(payload: CreateTeamDto) {
@@ -91,5 +91,16 @@ export class TeamsController {
   @MessagePattern('teams.verify.invitation')
   verifyInvitation(payload: any) {
     return this.teamsService.verifyInvitationToken(payload);
+  }
+
+
+  @MessagePattern('server.create.channel.success')
+  onChannelCreated(@Payload() data: { teamId: string, leaderId: string }) {
+    return this.teamsService.onChannelCreated(data);
+  }
+
+  @MessagePattern('server.create.channel.error')
+  onChannelCreateFailed(@Payload() data: { teamId: string }) {
+    return this.teamsService.onChannelCreateFailed(data.teamId);
   }
 }

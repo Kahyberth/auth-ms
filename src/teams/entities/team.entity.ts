@@ -9,6 +9,13 @@ import {
 } from 'typeorm';
 import { UsersTeam } from './users_team.entity';
 
+
+export enum TeamStatus {
+  PENDING = 'PENDING',
+  ACTIVE = 'ACTIVE',
+  FAILED = 'FAILED',
+}
+
 @Entity({ name: 'team' })
 export class Team {
   @PrimaryGeneratedColumn('uuid')
@@ -42,6 +49,13 @@ export class Team {
 
   @Column({ name: 'leader_id' })
   leaderId: string;
+
+  @Column({
+    type: 'enum',
+    enum: TeamStatus,
+    default: TeamStatus.PENDING,
+  })
+  status: TeamStatus;
 
   @ManyToOne(() => User, (user) => user.teamsLed)
   @JoinColumn({ name: 'leader_id' })
