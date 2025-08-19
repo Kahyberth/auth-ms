@@ -40,56 +40,88 @@ export class TeamsService {
    * @returns
    */
   async createTeam(payload: CreateTeamDto) {
+    try {
+      const team = this.teamRepository.create({
+        name: payload.name,
+        description: payload.description,
+        leaderId: payload.leaderId,
+        image: payload.image || null,
+        status: TeamStatus.PENDING,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
 
-    const team = this.teamRepository.create({
-      name: payload.name,
-      description: payload.description,
-      leaderId: payload.leaderId,
-      image: payload.image || null,
-      status: TeamStatus.PENDING,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+      const savedTeam = await this.teamRepository.save(team);
 
-  
-    const savedTeam = await this.teamRepository.save(team);
+      this.logger.log(`Team created with ID: ${savedTeam.id}, status: ${savedTeam.status}`);
 
-   //* Communicate with server-ms to create the server
-    this.client.emit('server.create.room', {
-      teamId: savedTeam.id,
-      serverName: savedTeam.name,
-      description: savedTeam.description,
-      created_by: savedTeam.leaderId,
-    });
+      this.client.emit('server.create.server', {
+        teamId: savedTeam.id,
+        serverName: savedTeam.name,
+        description: savedTeam.description,
+        created_by: savedTeam.leaderId,
+      });
 
-    return savedTeam;
+      this.logger.log(`Emitted server.create.server event for team: ${savedTeam.id}`);
+
+      return savedTeam;
+    } catch (error) {
+      this.logger.error('Error creating team:', error.stack);
+      throw new RpcException('Error creating team');
+    }
   }
 
 
   /**
    * Update team status to active when server is created
    * @description This is a callback function that is called when the server is created
-   * @param teamId 
+   * @param payload 
    * @returns 
    */
   async onChannelCreated(payload: any) {
-    console.log('payload', payload)
-    await this.teamRepository.update(payload.teamId, { status: TeamStatus.ACTIVE });
-    const leader = this.usersTeamRepository.create({
-      teamId: payload.teamId,
-      userId: payload.leaderId,
-      roleInTeam: TeamRoleEnum.LEADER,
-    });
-    await this.usersTeamRepository.save(leader);
+    try {
+      this.logger.log(`Received server.create.channel.success event for team: ${payload.teamId}`);
+      
+      await this.teamRepository.update(payload.teamId, { 
+        status: TeamStatus.ACTIVE,
+        updatedAt: new Date()
+      });
+      
+      this.logger.log(`Team ${payload.teamId} status updated to ACTIVE`);
+
+      const leader = this.usersTeamRepository.create({
+        teamId: payload.teamId,
+        userId: payload.leaderId,
+        roleInTeam: TeamRoleEnum.LEADER,
+      });
+      
+      await this.usersTeamRepository.save(leader);
+      this.logger.log(`Leader membership created for team: ${payload.teamId}, user: ${payload.leaderId}`);
+      
+      return { success: true, message: 'Team activated successfully' };
+    } catch (error) {
+      this.logger.error(`Error in onChannelCreated for team ${payload.teamId}:`, error.stack);
+      throw new RpcException('Error activating team');
+    }
   }
 
   /**
    * Delete team if server creation fails
    * @description This is a callback function that is called when the server creation fails
-   * @param teamId 
+   * @param payload 
    */
-  async onChannelCreateFailed(teamId: string) {
-    await this.teamRepository.delete(teamId);
+  async onChannelCreateFailed(payload: any) {
+    try {
+      this.logger.log(`Received server.create.channel.error event for team: ${payload.teamId}`);
+      
+      await this.teamRepository.delete(payload.teamId);
+      this.logger.log(`Team ${payload.teamId} deleted due to server creation failure`);
+      
+      return { success: true, message: 'Team deleted due to server creation failure' };
+    } catch (error) {
+      this.logger.error(`Error in onChannelCreateFailed for team ${payload.teamId}:`, error.stack);
+      throw new RpcException('Error deleting team');
+    }
   }
 
 

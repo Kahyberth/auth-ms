@@ -101,6 +101,11 @@ export class TeamsController {
 
   @MessagePattern('server.create.channel.error')
   onChannelCreateFailed(@Payload() data: { teamId: string }) {
-    return this.teamsService.onChannelCreateFailed(data.teamId);
+    return this.teamsService.onChannelCreateFailed(data);
+  }
+
+  @MessagePattern('teams.test.connection')
+  testConnection() {
+    return { message: 'Teams service is connected and working' };
   }
 }
