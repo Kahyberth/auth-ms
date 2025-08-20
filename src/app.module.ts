@@ -18,15 +18,12 @@ import { SocketModule } from './socket/socket.module';
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: envs.DB_HOST,
-      port: 5432,
+      port: envs.DB_PORT,
       username: envs.DB_USERNAME,
       password: envs.DB_PASSWORD,
       database: envs.DB_DATABASE,
       synchronize: true,
       entities: [Profile, Role, UsersRole, User, Team, UsersTeam],
-      extra: {
-        ssl: true,
-      }
     }),
     SocketModule,
   ],
